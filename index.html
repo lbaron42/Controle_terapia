@@ -23,5 +23,162 @@
             border: 1px solid #ccc;
             text-align: center;
         }
-        button
+        button {
+            margin-top: 10px;
+            padding: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
 
+    <h2>💰 Controle de Terapia</h2>
+
+    <h3>Adicionar Pagamento</h3>
+    <input type="date" id="paymentDate">
+    <input type="number" id="paymentAmount" placeholder="Valor (R$)">
+    <button onclick="addPayment()">Adicionar Pagamento</button>
+
+    <h3>Adicionar Sessão de Terapia</h3>
+    <input type="date" id="sessionDate">
+    <button onclick="addSession()">Adicionar Sessão</button>
+
+    <h3>💵 Pagamentos Registrados</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Valor (R$)</th>
+                <th>Créditos</th>
+            </tr>
+        </thead>
+        <tbody id="paymentsTable"></tbody>
+    </table>
+
+    <h3>📅 Sessões Realizadas</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+            </tr>
+        </thead>
+        <tbody id="sessionsTable"></tbody>
+    </table>
+
+    <h3>📊 Créditos Disponíveis: <span id="availableCredits">0</span></h3>
+
+    <script>
+        const SESSION_COST = 160;
+        const GITHUB_RAW_URL = "https://raw.githubusercontent.com/YOUR_USERNAME/therapy-tracker/main/data.json";
+        const GITHUB_API_URL = "https://api.github.com/repos/YOUR_USERNAME/therapy-tracker/contents/data.json";
+        const TOKEN = "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN"; // Replace with your token
+
+        async function loadData() {
+            try {
+                const response = await fetch(GITHUB_RAW_URL);
+                const data = await response.json();
+                updateTables(data.payments, data.sessions);
+            } catch (error) {
+                console.log("Erro ao carregar dados: ", error);
+            }
+        }
+
+        async function saveData(payments, sessions) {
+            const updatedData = JSON.stringify({ payments, sessions }, null, 2);
+            const response = await fetch(GITHUB_API_URL, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `token ${TOKEN}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    message: "Atualizando dados",
+                    content: btoa(updatedData), // Encode in Base64 for GitHub
+                    sha: await getSha()
+                })
+            });
+
+            if (response.ok) {
+                console.log("Dados salvos no GitHub.");
+            } else {
+                console.log("Erro ao salvar os dados.");
+            }
+        }
+
+        async function getSha() {
+            const response = await fetch(GITHUB_API_URL, {
+                headers: { "Authorization": `token ${TOKEN}` }
+            });
+            const data = await response.json();
+            return data.sha;
+        }
+
+        function addPayment() {
+            const date = document.getElementById("paymentDate").value;
+            const amount = parseFloat(document.getElementById("paymentAmount").value);
+
+            if (!date || isNaN(amount) || amount <= 0) {
+                alert("Por favor, insira um valor válido.");
+                return;
+            }
+
+            const payments = JSON.parse(localStorage.getItem("payments")) || [];
+            payments.push({ date, amount });
+            localStorage.setItem("payments", JSON.stringify(payments));
+
+            const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
+            saveData(payments, sessions);
+            updateTables(payments, sessions);
+        }
+
+        function addSession() {
+            const date = document.getElementById("sessionDate").value;
+
+            if (!date) {
+                alert("Por favor, insira uma data válida.");
+                return;
+            }
+
+            const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
+            sessions.push(date);
+            localStorage.setItem("sessions", JSON.stringify(sessions));
+
+            const payments = JSON.parse(localStorage.getItem("payments")) || [];
+            saveData(payments, sessions);
+            updateTables(payments, sessions);
+        }
+
+        function updateTables(payments, sessions) {
+            const paymentsTable = document.getElementById("paymentsTable");
+            const sessionsTable = document.getElementById("sessionsTable");
+            const availableCreditsDisplay = document.getElementById("availableCredits");
+
+            paymentsTable.innerHTML = "";
+            sessionsTable.innerHTML = "";
+
+            let totalCredits = 0;
+
+            payments.forEach(payment => {
+                const credits = Math.floor(payment.amount / SESSION_COST);
+                totalCredits += credits;
+                const row = `<tr><td>${payment.date}</td><td>R$ ${payment.amount.toFixed(2)}</td><td>${credits}</td></tr>`;
+                paymentsTable.innerHTML += row;
+            });
+
+            sessions.forEach(session => {
+                const row = `<tr><td>${session}</td></tr>`;
+                sessionsTable.innerHTML += row;
+            });
+
+            const remainingCredits = Math.max(totalCredits - sessions.length, 0);
+            availableCreditsDisplay.innerText = remainingCredits;
+        }
+
+        window.onload = loadData;
+    </script>
+
+</body>
+</html>
