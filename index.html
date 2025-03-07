@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Therapy Credit Tracker</title>
+    <title>Controle de Terapia</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -23,121 +23,5 @@
             border: 1px solid #ccc;
             text-align: center;
         }
-        button {
-            margin-top: 10px;
-            padding: 10px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body>
+        button
 
-    <h2>💰 Therapy Credit Tracker</h2>
-
-    <h3>Add a Payment</h3>
-    <input type="date" id="paymentDate">
-    <input type="number" id="paymentAmount" placeholder="Amount (R$)">
-    <button onclick="addPayment()">Add Payment</button>
-
-    <h3>Add a Therapy Session</h3>
-    <input type="date" id="sessionDate">
-    <button onclick="addSession()">Add Session</button>
-
-    <h3>Payment Records</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Amount (R$)</th>
-                <th>Credits</th>
-            </tr>
-        </thead>
-        <tbody id="paymentsTable"></tbody>
-    </table>
-
-    <h3>Session Records</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th>
-            </tr>
-        </thead>
-        <tbody id="sessionsTable"></tbody>
-    </table>
-
-    <h3>📊 Available Credits: <span id="availableCredits">0</span></h3>
-
-    <script>
-        const SESSION_COST = 160;
-
-        function loadData() {
-            const payments = JSON.parse(localStorage.getItem("payments")) || [];
-            const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
-            updateTables(payments, sessions);
-        }
-
-        function addPayment() {
-            const date = document.getElementById("paymentDate").value;
-            const amount = parseFloat(document.getElementById("paymentAmount").value);
-
-            if (!date || isNaN(amount) || amount <= 0) {
-                alert("Please enter a valid payment amount.");
-                return;
-            }
-
-            const payments = JSON.parse(localStorage.getItem("payments")) || [];
-            payments.push({ date, amount });
-            localStorage.setItem("payments", JSON.stringify(payments));
-
-            updateTables(payments, JSON.parse(localStorage.getItem("sessions")) || []);
-        }
-
-        function addSession() {
-            const date = document.getElementById("sessionDate").value;
-
-            if (!date) {
-                alert("Please enter a valid session date.");
-                return;
-            }
-
-            const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
-            sessions.push(date);
-            localStorage.setItem("sessions", JSON.stringify(sessions));
-
-            updateTables(JSON.parse(localStorage.getItem("payments")) || [], sessions);
-        }
-
-        function updateTables(payments, sessions) {
-            const paymentsTable = document.getElementById("paymentsTable");
-            const sessionsTable = document.getElementById("sessionsTable");
-            const availableCreditsDisplay = document.getElementById("availableCredits");
-
-            paymentsTable.innerHTML = "";
-            sessionsTable.innerHTML = "";
-
-            let totalCredits = 0;
-
-            payments.forEach(payment => {
-                const credits = Math.floor(payment.amount / SESSION_COST);
-                totalCredits += credits;
-                const row = `<tr><td>${payment.date}</td><td>R$ ${payment.amount.toFixed(2)}</td><td>${credits}</td></tr>`;
-                paymentsTable.innerHTML += row;
-            });
-
-            sessions.forEach(session => {
-                const row = `<tr><td>${session}</td></tr>`;
-                sessionsTable.innerHTML += row;
-            });
-
-            const remainingCredits = Math.max(totalCredits - sessions.length, 0);
-            availableCreditsDisplay.innerText = remainingCredits;
-        }
-
-        window.onload = loadData;
-    </script>
-
-</body>
-</html>
