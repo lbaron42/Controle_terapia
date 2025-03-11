@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Terapia</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDK -->
+    <script type="module">
+      // Import the functions you need from the SDKs you need
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+      // Your web app's Firebase configuration - you'll need to replace these with your actual Firebase config
+      const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      
+      // Make Firebase available globally
+      window.db = db;
+      window.firestore = { collection, getDocs, addDoc };
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+        
+        h3 {
+            color: #3498db;
+            border-bottom: 2px solid #f1f1f1;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        input {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            flex-grow: 1;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        button {
+            padding: 12px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 0 1px #eee;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-top: 1px solid #eee;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .credits-display {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 30px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        #availableCredits {
+            color: #3498db;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>💰 Controle de Terapia - Manon/Luiz </h2>
+        
+        <h3>Adicionar Pagamento</h3>
+        <div class="input-group">
+            <input type="date" id="paymentDate">
+            <input type="number" id="paymentAmount" placeholder="Valor (R$)">
+            <button onclick="addPayment()">Adicionar</button>
+        </div>
+        
+        <h3>Adicionar Sessão de Terapia</h3>
+        <div class="input-group">
+            <input type="date" id="sessionDate">
+            <button onclick="addSession()">Adicionar</button>
+        </div>
+        
+        <h3>💵 Pagamentos Registrados</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Valor (R$)</th>
+                    <th>Créditos</th>
+                </tr>
+            </thead>
+            <tbody id="paymentsTable"></tbody>
+        </table>
+        
+        <h3>📅 Sessões Realizadas</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                </tr>
+            </thead>
+            <tbody id="sessionsTable"></tbody>
+        </table>
+        
+        <div class="credits-display">
+            📊 Créditos Disponíveis: <span id="availableCredits">0</span>
+        </div>
+    </div>
+    
+    <script>
+        const SESSION_COST = 160;
+        
+        async function loadData() {
+            try {
+                // Get payments from Firestore
+                const paymentsSnapshot = await window.firestore.getDocs(
+                    window.firestore.collection(window.db, "payments")
+                );
+                const payments = [];
+                paymentsSnapshot.forEach(doc => {
+                    payments.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Get sessions from Firestore
+                const sessionsSnapshot = await window.firestore.getDocs(
+                    window.firestore.collection(window.db, "sessions")
+                );
+                const sessions = [];
+                sessionsSnapshot.forEach(doc => {
+                    sessions.push(doc.data().date);
+                });
+                
+                // Update UI with the data
+                updateTables(payments, sessions);
+                
+                // Store in localStorage as backup
+                localStorage.setItem("payments", JSON.stringify(payments));
+                localStorage.setItem("sessions", JSON.stringify(sessions));
+            } catch (error) {
+                console.log("Erro ao carregar dados: ", error);
+                
+                // Fallback to localStorage if Firebase fails
+                const payments = JSON.parse(localStorage.getItem("payments")) || [];
+                const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
+                updateTables(payments, sessions);
+            }
+        }
+
+        async function saveData(payments, sessions) {
+            // We don't need to save all data each time
+            // Firebase will handle individual records
+        }
+
+        async function addPayment() {
+            const date = document.getElementById("paymentDate").value;
+            const amount = parseFloat(document.getElementById("paymentAmount").value);
+
+            if (!date || isNaN(amount) || amount <= 0) {
+                alert("Por favor, insira um valor válido.");
+                return;
+            }
+
+            try {
+                // Add to Firebase
+                await window.firestore.addDoc(
+                    window.firestore.collection(window.db, "payments"), 
+                    { date, amount }
+                );
+                
+                // Update local storage
+                const payments = JSON.parse(localStorage.getItem("payments")) || [];
+                payments.push({ date, amount });
+                localStorage.setItem("payments", JSON.stringify(payments));
+                
+                // Reload data to update UI
+                await loadData();
+                
+                // Clear input fields
+                document.getElementById("paymentDate").value = "";
+                document.getElementById("paymentAmount").value = "";
+            } catch (error) {
+                console.error("Error adding payment: ", error);
+                alert("Erro ao adicionar pagamento. Tente novamente.");
+            }
+        }
+
+        async function addSession() {
+            const date = document.getElementById("sessionDate").value;
+
+            if (!date) {
+                alert("Por favor, insira uma data válida.");
+                return;
+            }
+
+            try {
+                // Add to Firebase
+                await window.firestore.addDoc(
+                    window.firestore.collection(window.db, "sessions"), 
+                    { date }
+                );
+                
+                // Update local storage
+                const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
+                sessions.push(date);
+                localStorage.setItem("sessions", JSON.stringify(sessions));
+                
+                // Reload data to update UI
+                await loadData();
+                
+                // Clear input field
+                document.getElementById("sessionDate").value = "";
+            } catch (error) {
+                console.error("Error adding session: ", error);
+                alert("Erro ao adicionar sessão. Tente novamente.");
+            }
+        }
+
+        function updateTables(payments, sessions) {
+            const paymentsTable = document.getElementById("paymentsTable");
+            const sessionsTable = document.getElementById("sessionsTable");
+            const availableCreditsDisplay = document.getElementById("availableCredits");
+
+            paymentsTable.innerHTML = "";
+            sessionsTable.innerHTML = "";
+
+            let totalCredits = 0;
+
+            payments.forEach(payment => {
+                const credits = Math.floor(payment.amount / SESSION_COST);
+                totalCredits += credits;
+                const row = `<tr><td>${payment.date}</td><td>R$ ${payment.amount.toFixed(2)}</td><td>${credits}</td></tr>`;
+                paymentsTable.innerHTML += row;
+            });
+
+            sessions.forEach(session => {
+                const row = `<tr><td>${session}</td></tr>`;
+                sessionsTable.innerHTML += row;
+            });
+
+            const remainingCredits = Math.max(totalCredits - sessions.length, 0);
+            availableCreditsDisplay.innerText = remainingCredits;
+        }
+
+        window.onload = loadData;
+    </script>
+
+</body>
+</html>

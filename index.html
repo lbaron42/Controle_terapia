@@ -4,151 +4,634 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle de Terapia</title>
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon.ico?v=2">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=2">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon.ico?v=2">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon.ico?v=2">
+    <link rel="shortcut icon" href="favicon.ico?v=2" type="image/x-icon">
+    <meta name="theme-color" content="#3498db">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDK -->
+    <script type="module">
+      // Import the functions you need from the SDKs you need
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { getFirestore, collection, getDocs, addDoc, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+      // IMPORTANT: Replace this with your actual Firebase configuration
+      // To get your configuration:
+      // 1. Go to the Firebase Console: https://console.firebase.google.com/project/controleterapia/settings/general/
+      // 2. In the "Your apps" section, click on your web app (or create one if needed)
+      // 3. Select "Config" from the Firebase SDK snippet options
+      // 4. Copy the firebaseConfig object and replace this placeholder
+      const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "controleterapia.firebaseapp.com",
+        projectId: "controleterapia",
+        storageBucket: "controleterapia.appspot.com",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      
+      // Make Firebase available globally
+      window.db = db;
+      window.firestore = { collection, getDocs, addDoc, doc, deleteDoc, updateDoc };
+    </script>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f4f4f4;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
         }
-        h2 {
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        /* Header image styles */
+        .header-image-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+            border-radius: 12px 12px 0 0;
+            margin-bottom: 30px;
+        }
+        
+        .header-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+        
+        .header-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.5));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .header-title {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
             text-align: center;
         }
+        
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+            
+            .header-image-container {
+                height: 150px;
+                border-radius: 8px 8px 0 0;
+                margin-bottom: 20px;
+            }
+            
+            .header-title {
+                font-size: 24px;
+            }
+            
+            table {
+                font-size: 14px;
+            }
+            
+            th, td {
+                padding: 8px 6px;
+            }
+            
+            .export-buttons {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .status-dropdown {
+                padding: 8px 4px;
+                font-size: 13px;
+                width: 100%;
+            }
+        }
+        
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+        
+        h3 {
+            color: #3498db;
+            border-bottom: 2px solid #f1f1f1;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        input {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            flex-grow: 1;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Field width classes */
+        .field-date {
+            flex-grow: 2; /* Make date fields larger */
+        }
+        
+        .field-amount {
+            flex-grow: 1;
+            max-width: 120px; /* Limit the width of amount field */
+        }
+        
+        button {
+            padding: 12px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
         table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
+            margin-top: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 0 1px #eee;
         }
-        th, td {
-            padding: 10px;
-            border: 1px solid #ccc;
+        
+        th {
+            background-color: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-top: 1px solid #eee;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .credits-display {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 30px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        #availableCredits {
+            color: #3498db;
+            font-size: 24px;
+        }
+        
+        .delete-btn {
+            background: transparent;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            padding: 5px;
+            transition: transform 0.2s;
+        }
+        
+        .delete-btn:hover {
+            transform: scale(1.2);
+            background: transparent;
+        }
+        
+        .delete-icon {
+            font-size: 18px;
+        }
+        
+        .export-section {
+            margin-top: 30px;
             text-align: center;
         }
-        button {
-            margin-top: 10px;
-            padding: 10px;
-            background: #4CAF50;
+        
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .toast {
+            padding: 12px 20px;
+            margin-bottom: 10px;
+            border-radius: 4px;
             color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 300px;
+            max-width: 400px;
+            animation: slideIn 0.3s ease-out forwards;
+        }
+        
+        .toast-success {
+            background-color: #2ecc71;
+        }
+        
+        .toast-error {
+            background-color: #e74c3c;
+        }
+        
+        .toast-info {
+            background-color: #3498db;
+        }
+        
+        .toast-close {
+            background: transparent;
             border: none;
+            color: white;
+            font-size: 16px;
             cursor: pointer;
+            margin-left: 10px;
+        }
+        
+        /* Status styles */
+        .status-dropdown {
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-block;
+            min-width: 80px;
+            text-align: center;
+        }
+        
+        .status-agendada {
+            background-color: #FFF9C4; /* Light yellow */
+            color: #F57F17;
+        }
+        
+        .status-realizada {
+            background-color: #C8E6C9; /* Light green */
+            color: #2E7D32;
+        }
+        
+        .status-falta {
+            background-color: #FFCDD2; /* Light red */
+            color: #C62828;
+        }
+        
+        .status-cancelada {
+            background-color: #BBDEFB; /* Light blue */
+            color: #1565C0;
+        }
+        
+        /* Credits used styling */
+        .credits-used {
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
         }
     </style>
 </head>
 <body>
-
-    <h2>💰 Controle de Terapia</h2>
-
-    <h3>Adicionar Pagamento</h3>
-    <input type="date" id="paymentDate">
-    <input type="number" id="paymentAmount" placeholder="Valor (R$)">
-    <button onclick="addPayment()">Adicionar Pagamento</button>
-
-    <h3>Adicionar Sessão de Terapia</h3>
-    <input type="date" id="sessionDate">
-    <button onclick="addSession()">Adicionar Sessão</button>
-
-    <h3>💵 Pagamentos Registrados</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Data</th>
-                <th>Valor (R$)</th>
-                <th>Créditos</th>
-            </tr>
-        </thead>
-        <tbody id="paymentsTable"></tbody>
-    </table>
-
-    <h3>📅 Sessões Realizadas</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Data</th>
-            </tr>
-        </thead>
-        <tbody id="sessionsTable"></tbody>
-    </table>
-
-    <h3>📊 Créditos Disponíveis: <span id="availableCredits">0</span></h3>
-
+    <div class="container">
+        <div class="header-image-container">
+            <img src="images/cosmic_glowing.webp" alt="Header Image" class="header-image">
+            <div class="header-overlay">
+                <h1 class="header-title">💰 Controle de Terapia - Manon/Luiz</h1>
+            </div>
+        </div>
+        
+        <h3>Adicionar Pagamento</h3>
+        <div class="input-group">
+            <input type="date" id="paymentDate" class="field-date">
+            <input type="number" id="paymentAmount" placeholder="Valor (R$)" class="field-amount">
+            <button onclick="addPayment()">Adicionar</button>
+        </div>
+        
+        <h3>Adicionar Sessão de Terapia</h3>
+        <div class="input-group">
+            <input type="date" id="sessionDate" class="field-date">
+            <button onclick="addSession()">Adicionar</button>
+        </div>
+        
+        <h3>💵 Pagamentos Registrados</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Valor (R$)</th>
+                    <th>Créditos</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="paymentsTable"></tbody>
+        </table>
+        
+        <h3>📅 Sessões Realizadas</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Status</th>
+                    <th>Créditos Usados</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="sessionsTable"></tbody>
+        </table>
+        
+        <div class="credits-display">
+            📊 Créditos Disponíveis: <span id="availableCredits">0</span>
+        </div>
+        
+        <div class="export-section">
+            <h3>Exportar Dados</h3>
+            <div class="export-buttons">
+                <button onclick="exportPaymentsCSV()">Exportar Pagamentos (CSV)</button>
+                <button onclick="exportSessionsCSV()">Exportar Sessões (CSV)</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast container for notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+    
     <script>
         const SESSION_COST = 160;
-        const GITHUB_RAW_URL = "https://raw.githubusercontent.com/YOUR_USERNAME/therapy-tracker/main/data.json";
-        const GITHUB_API_URL = "https://api.github.com/repos/YOUR_USERNAME/therapy-tracker/contents/data.json";
-        const TOKEN = "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN"; // Replace with your token
-
+        
+        // Toast notification system
+        function showToast(message, type = 'info', duration = 3000) {
+            const toastContainer = document.getElementById('toastContainer');
+            
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            // Create message element
+            const messageElement = document.createElement('span');
+            messageElement.textContent = message;
+            
+            // Create close button
+            const closeButton = document.createElement('button');
+            closeButton.className = 'toast-close';
+            closeButton.innerHTML = '&times;';
+            closeButton.addEventListener('click', () => {
+                toast.style.animation = 'fadeOut 0.3s forwards';
+                setTimeout(() => {
+                    toastContainer.removeChild(toast);
+                }, 300);
+            });
+            
+            // Add elements to toast
+            toast.appendChild(messageElement);
+            toast.appendChild(closeButton);
+            
+            // Add toast to container
+            toastContainer.appendChild(toast);
+            
+            // Auto-remove after duration
+            setTimeout(() => {
+                if (toastContainer.contains(toast)) {
+                    toast.style.animation = 'fadeOut 0.3s forwards';
+                    setTimeout(() => {
+                        if (toastContainer.contains(toast)) {
+                            toastContainer.removeChild(toast);
+                        }
+                    }, 300);
+                }
+            }, duration);
+        }
+        
         async function loadData() {
             try {
-                const response = await fetch(GITHUB_RAW_URL);
-                const data = await response.json();
-                updateTables(data.payments, data.sessions);
+                // Get payments from Firestore
+                const paymentsSnapshot = await window.firestore.getDocs(
+                    window.firestore.collection(window.db, "payments")
+                );
+                const payments = [];
+                paymentsSnapshot.forEach(doc => {
+                    payments.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Get sessions from Firestore
+                const sessionsSnapshot = await window.firestore.getDocs(
+                    window.firestore.collection(window.db, "sessions")
+                );
+                const sessions = [];
+                sessionsSnapshot.forEach(doc => {
+                    sessions.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Update UI with the data
+                updateTables(payments, sessions);
+                
+                // Store in localStorage as backup
+                localStorage.setItem("payments", JSON.stringify(payments));
+                localStorage.setItem("sessions", JSON.stringify(sessions));
             } catch (error) {
                 console.log("Erro ao carregar dados: ", error);
+                showToast("Erro ao carregar dados. Usando dados locais.", "error");
+                
+                // Fallback to localStorage if Firebase fails
+                const payments = JSON.parse(localStorage.getItem("payments")) || [];
+                const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
+                updateTables(payments, sessions);
             }
         }
 
-        async function saveData(payments, sessions) {
-            const updatedData = JSON.stringify({ payments, sessions }, null, 2);
-            const response = await fetch(GITHUB_API_URL, {
-                method: "PUT",
-                headers: {
-                    "Authorization": `token ${TOKEN}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    message: "Atualizando dados",
-                    content: btoa(updatedData), // Encode in Base64 for GitHub
-                    sha: await getSha()
-                })
-            });
-
-            if (response.ok) {
-                console.log("Dados salvos no GitHub.");
-            } else {
-                console.log("Erro ao salvar os dados.");
-            }
-        }
-
-        async function getSha() {
-            const response = await fetch(GITHUB_API_URL, {
-                headers: { "Authorization": `token ${TOKEN}` }
-            });
-            const data = await response.json();
-            return data.sha;
-        }
-
-        function addPayment() {
+        async function addPayment() {
             const date = document.getElementById("paymentDate").value;
             const amount = parseFloat(document.getElementById("paymentAmount").value);
 
-            if (!date || isNaN(amount) || amount <= 0) {
-                alert("Por favor, insira um valor válido.");
+            if (!date) {
+                showToast("Por favor, insira uma data válida.", "error");
+                return;
+            }
+            
+            if (isNaN(amount) || amount <= 0) {
+                showToast("Por favor, insira um valor válido.", "error");
                 return;
             }
 
-            const payments = JSON.parse(localStorage.getItem("payments")) || [];
-            payments.push({ date, amount });
-            localStorage.setItem("payments", JSON.stringify(payments));
+            // Format date for display
+            const formattedDate = formatDate(date);
 
-            const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
-            saveData(payments, sessions);
-            updateTables(payments, sessions);
+            try {
+                // Add to Firebase
+                await window.firestore.addDoc(
+                    window.firestore.collection(window.db, "payments"), 
+                    { date: formattedDate, amount, rawDate: date }
+                );
+                
+                // Update local storage
+                const payments = JSON.parse(localStorage.getItem("payments")) || [];
+                payments.push({ date: formattedDate, amount, rawDate: date });
+                localStorage.setItem("payments", JSON.stringify(payments));
+                
+                // Reload data to update UI
+                await loadData();
+                
+                // Clear input fields
+                document.getElementById("paymentDate").value = "";
+                document.getElementById("paymentAmount").value = "";
+                
+                showToast("Pagamento adicionado com sucesso!", "success");
+            } catch (error) {
+                console.error("Error adding payment: ", error);
+                showToast("Erro ao adicionar pagamento. Tente novamente.", "error");
+            }
         }
 
-        function addSession() {
+        async function addSession() {
             const date = document.getElementById("sessionDate").value;
 
             if (!date) {
-                alert("Por favor, insira uma data válida.");
+                showToast("Por favor, insira uma data válida.", "error");
                 return;
             }
 
-            const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
-            sessions.push(date);
-            localStorage.setItem("sessions", JSON.stringify(sessions));
+            // Format date for display
+            const formattedDate = formatDate(date);
 
-            const payments = JSON.parse(localStorage.getItem("payments")) || [];
-            saveData(payments, sessions);
-            updateTables(payments, sessions);
+            try {
+                // Add to Firebase with default status "Agendada"
+                await window.firestore.addDoc(
+                    window.firestore.collection(window.db, "sessions"), 
+                    { 
+                        date: formattedDate, 
+                        rawDate: date,
+                        status: "Agendada" 
+                    }
+                );
+                
+                // Update local storage
+                const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
+                sessions.push({ 
+                    date: formattedDate, 
+                    rawDate: date,
+                    status: "Agendada" 
+                });
+                localStorage.setItem("sessions", JSON.stringify(sessions));
+                
+                // Reload data to update UI
+                await loadData();
+                
+                // Clear input field
+                document.getElementById("sessionDate").value = "";
+                
+                showToast("Sessão adicionada com sucesso!", "success");
+            } catch (error) {
+                console.error("Error adding session: ", error);
+                showToast("Erro ao adicionar sessão. Tente novamente.", "error");
+            }
+        }
+
+        // Format date from YYYY-MM-DD to DD-MM-YYYY
+        function formatDate(dateString) {
+            if (!dateString) return "";
+            
+            // If already in DD-MM-YYYY format, return as is
+            if (dateString.match(/^\d{2}-\d{2}-\d{4}$/)) return dateString;
+            
+            const parts = dateString.split('-');
+            if (parts.length !== 3) return dateString;
+            
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+
+        // Parse date from DD-MM-YYYY to YYYY-MM-DD
+        function parseDate(dateString) {
+            if (!dateString) return "";
+            
+            // If already in YYYY-MM-DD format, return as is
+            if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) return dateString;
+            
+            const parts = dateString.split('-');
+            if (parts.length !== 3) return dateString;
+            
+            // Check if first part is day (2 digits) or year (4 digits)
+            if (parts[0].length === 4) {
+                // Already in YYYY-MM-DD format
+                return dateString;
+            } else {
+                // In DD-MM-YYYY format, convert to YYYY-MM-DD
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
         }
 
         function updateTables(payments, sessions) {
@@ -161,28 +644,229 @@
 
             let totalCredits = 0;
 
+            // Sort payments by date (newest first)
+            payments.sort((a, b) => {
+                const dateA = a.rawDate ? new Date(a.rawDate) : new Date(parseDate(a.date));
+                const dateB = b.rawDate ? new Date(b.rawDate) : new Date(parseDate(b.date));
+                return dateB - dateA;
+            });
+
             payments.forEach(payment => {
                 const credits = Math.floor(payment.amount / SESSION_COST);
                 totalCredits += credits;
-                const row = `<tr><td>${payment.date}</td><td>R$ ${payment.amount.toFixed(2)}</td><td>${credits}</td></tr>`;
+                
+                // Ensure date is in DD-MM-YYYY format
+                const displayDate = payment.date ? payment.date : formatDate(payment.rawDate);
+                
+                const row = `<tr>
+                    <td>${displayDate}</td>
+                    <td>R$ ${payment.amount.toFixed(2)}</td>
+                    <td>${credits}</td>
+                    <td>
+                        <button class="delete-btn" onclick="deletePayment('${payment.id}')">
+                            <span class="delete-icon">🗑️</span>
+                        </button>
+                    </td>
+                </tr>`;
                 paymentsTable.innerHTML += row;
             });
 
+            // Sort sessions by date (newest first)
+            sessions.sort((a, b) => {
+                const dateA = a.rawDate ? new Date(a.rawDate) : new Date(parseDate(a.date || a));
+                const dateB = b.rawDate ? new Date(b.rawDate) : new Date(parseDate(b.date || b));
+                return dateB - dateA;
+            });
+
+            // Count how many sessions should be counted for credit usage
+            let countedSessions = 0;
+            
             sessions.forEach(session => {
-                const row = `<tr><td>${session}</td></tr>`;
+                // Ensure date is in DD-MM-YYYY format
+                const displayDate = session.date ? session.date : 
+                                   (typeof session === 'string' ? session : formatDate(session.rawDate));
+                
+                // Get status or set default
+                const status = session.status || 
+                              (typeof session === 'object' ? 'Agendada' : 'Realizada');
+                
+                // Count session if status is "Falta" or "Realizada"
+                if (status === 'Falta' || status === 'Realizada') {
+                    countedSessions++;
+                }
+                
+                // Calculate credits used: 1 for "Falta" or "Realizada", 0 otherwise
+                const creditsUsed = (status === 'Falta' || status === 'Realizada') ? 1 : 0;
+                
+                const row = `<tr>
+                    <td>${displayDate}</td>
+                    <td>
+                        <select class="status-dropdown status-${status.toLowerCase()}" 
+                                onchange="updateSessionStatus('${session.id}', this.value)">
+                            <option value="Agendada" ${status === 'Agendada' ? 'selected' : ''}>Agendada</option>
+                            <option value="Realizada" ${status === 'Realizada' ? 'selected' : ''}>Realizada</option>
+                            <option value="Falta" ${status === 'Falta' ? 'selected' : ''}>Falta</option>
+                            <option value="Cancelada" ${status === 'Cancelada' ? 'selected' : ''}>Cancelada</option>
+                        </select>
+                    </td>
+                    <td class="credits-used">${creditsUsed}</td>
+                    <td>
+                        <button class="delete-btn" onclick="deleteSession('${session.id}')">
+                            <span class="delete-icon">🗑️</span>
+                        </button>
+                    </td>
+                </tr>`;
                 sessionsTable.innerHTML += row;
             });
 
-            const remainingCredits = Math.max(totalCredits - sessions.length, 0);
+            const remainingCredits = Math.max(totalCredits - countedSessions, 0);
             availableCreditsDisplay.innerText = remainingCredits;
         }
 
+        async function deletePayment(id) {
+            if (confirm("Tem certeza que deseja excluir este pagamento?")) {
+                try {
+                    // Delete from Firestore
+                    await window.firestore.deleteDoc(
+                        window.firestore.doc(window.db, "payments", id)
+                    );
+                    
+                    // Update local storage
+                    const payments = JSON.parse(localStorage.getItem("payments")) || [];
+                    const updatedPayments = payments.filter(payment => payment.id !== id);
+                    localStorage.setItem("payments", JSON.stringify(updatedPayments));
+                    
+                    // Reload data to update UI
+                    await loadData();
+                    
+                    showToast("Pagamento excluído com sucesso!", "success");
+                } catch (error) {
+                    console.error("Error deleting payment: ", error);
+                    showToast("Erro ao excluir pagamento. Tente novamente.", "error");
+                }
+            }
+        }
+
+        async function deleteSession(id) {
+            if (confirm("Tem certeza que deseja excluir esta sessão?")) {
+                try {
+                    // Delete from Firestore
+                    await window.firestore.deleteDoc(
+                        window.firestore.doc(window.db, "sessions", id)
+                    );
+                    
+                    // Update local storage
+                    const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
+                    const updatedSessions = sessions.filter(session => session.id !== id);
+                    localStorage.setItem("sessions", JSON.stringify(updatedSessions));
+                    
+                    // Reload data to update UI
+                    await loadData();
+                    
+                    showToast("Sessão excluída com sucesso!", "success");
+                } catch (error) {
+                    console.error("Error deleting session: ", error);
+                    showToast("Erro ao excluir sessão. Tente novamente.", "error");
+                }
+            }
+        }
+
+        async function updateSessionStatus(id, newStatus) {
+            try {
+                // Get the dropdown element that triggered the change
+                const dropdown = event.target;
+                
+                // Update dropdown class for styling
+                dropdown.className = `status-dropdown status-${newStatus.toLowerCase()}`;
+                
+                // Update in Firestore
+                await window.firestore.updateDoc(
+                    window.firestore.doc(window.db, "sessions", id),
+                    { status: newStatus }
+                );
+                
+                // Update in localStorage
+                const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
+                const updatedSessions = sessions.map(session => {
+                    if (session.id === id) {
+                        return { ...session, status: newStatus };
+                    }
+                    return session;
+                });
+                localStorage.setItem("sessions", JSON.stringify(updatedSessions));
+                
+                // Reload data to update credit count
+                await loadData();
+                
+                showToast(`Status atualizado para: ${newStatus}`, "success");
+            } catch (error) {
+                console.error("Error updating session status: ", error);
+                showToast("Erro ao atualizar status. Tente novamente.", "error");
+                
+                // Reload to reset the dropdown to the previous value
+                await loadData();
+            }
+        }
+
+        function exportPaymentsCSV() {
+            const payments = JSON.parse(localStorage.getItem("payments")) || [];
+            if (payments.length === 0) {
+                showToast("Não há pagamentos para exportar.", "info");
+                return;
+            }
+            
+            // Create CSV content
+            let csvContent = "Data,Valor,Créditos\n";
+            
+            payments.forEach(payment => {
+                const credits = Math.floor(payment.amount / SESSION_COST);
+                csvContent += `${payment.date},${payment.amount.toFixed(2)},${credits}\n`;
+            });
+            
+            // Create download link
+            downloadCSV(csvContent, "pagamentos.csv");
+        }
+        
+        function exportSessionsCSV() {
+            const sessions = JSON.parse(localStorage.getItem("sessions")) || [];
+            if (sessions.length === 0) {
+                showToast("Não há sessões para exportar.", "info");
+                return;
+            }
+            
+            // Create CSV content
+            let csvContent = "Data,Status,Créditos Usados\n";
+            
+            sessions.forEach(session => {
+                const sessionDate = session.date || session;
+                const status = session.status || 'Realizada';
+                const creditsUsed = (status === 'Falta' || status === 'Realizada') ? 1 : 0;
+                csvContent += `${sessionDate},${status},${creditsUsed}\n`;
+            });
+            
+            // Create download link
+            downloadCSV(csvContent, "sessoes.csv");
+        }
+        
+        function downloadCSV(csvContent, fileName) {
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            
+            // Create download link
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", fileName);
+            link.style.visibility = "hidden";
+            
+            // Add to document, click and remove
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Load data when page loads
         window.onload = loadData;
     </script>
-
-    <!-- Add Firebase SDK before your closing </body> tag -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
 
 </body>
 </html>
