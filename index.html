@@ -89,6 +89,57 @@
             justify-content: center;
         }
         
+        /* Dropdown styles */
+        .config-dropdown {
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .config-dropdown-btn {
+            width: 100%;
+            text-align: left;
+            padding: 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s, border-radius 0.3s;
+        }
+        
+        .config-dropdown-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .config-dropdown-btn.active {
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .dropdown-arrow {
+            transition: transform 0.3s;
+        }
+        
+        .dropdown-arrow.up {
+            transform: rotate(180deg);
+        }
+        
+        .config-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            border-radius: 0 0 8px 8px;
+        }
+        
+        .config-content.show {
+            max-height: 300px;
+        }
+        
         .header-title {
             color: white;
             font-size: 32px;
@@ -115,6 +166,25 @@
             
             .header-title {
                 font-size: 24px;
+            }
+            
+            .config-dropdown-btn {
+                padding: 12px;
+                font-size: 14px;
+            }
+            
+            .config-content.show {
+                max-height: 400px; /* Larger for mobile to accommodate stacked elements */
+            }
+            
+            .config-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .config-label {
+                width: 100%;
+                margin-bottom: 5px;
             }
             
             table {
@@ -173,6 +243,11 @@
         .field-amount {
             flex-grow: 1;
             max-width: 120px; /* Limit the width of amount field */
+        }
+        
+        .field-time {
+            flex-grow: 1;
+            max-width: 120px;
         }
         
         button {
@@ -365,6 +440,31 @@
                 opacity: 0;
             }
         }
+        
+        /* Configuration styles */
+        .config-container {
+            background-color: #f8f9fa;
+            border-radius: 0 0 8px 8px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-top: none;
+        }
+        
+        .config-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .config-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .config-label {
+            width: 180px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
     </style>
 </head>
 <body>
@@ -373,6 +473,30 @@
             <img src="images/cosmic_glowing.webp" alt="Header Image" class="header-image">
             <div class="header-overlay">
                 <h1 class="header-title">💰 Controle de Terapia - Manon/Luiz</h1>
+            </div>
+        </div>
+        
+        <div class="config-dropdown">
+            <button class="config-dropdown-btn" onclick="toggleConfigSection()">
+                ⚙️ Configuração de Valor <span class="dropdown-arrow">▼</span>
+            </button>
+            <div id="configSection" class="config-content">
+                <div class="config-container">
+                    <div class="config-row">
+                        <div class="config-label">A partir de:</div>
+                        <div class="input-group">
+                            <input type="date" id="newRateDate" class="field-date">
+                            <input type="time" id="newRateTime" class="field-time">
+                        </div>
+                    </div>
+                    <div class="config-row">
+                        <div class="config-label">Novo valor da sessão:</div>
+                        <div class="input-group">
+                            <input type="number" id="newSessionCost" placeholder="Valor (R$)" class="field-amount">
+                            <button onclick="updateSessionCost()">Salvar</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -396,6 +520,7 @@
                     <th>Data</th>
                     <th>Valor (R$)</th>
                     <th>Créditos</th>
+                    <th>Valor Sessão</th>
                     <th>Ações</th>
                 </tr>
             </thead>
@@ -432,7 +557,129 @@
     <div class="toast-container" id="toastContainer"></div>
     
     <script>
-        const SESSION_COST = 160;
+        const DEFAULT_SESSION_COST = 160;
+        let SESSION_COST = DEFAULT_SESSION_COST;
+        let NEW_RATE_CONFIG = null;
+        
+        // Load saved rate configuration from localStorage on page load
+        function loadRateConfig() {
+            const savedConfig = localStorage.getItem("rateConfig");
+            if (savedConfig) {
+                NEW_RATE_CONFIG = JSON.parse(savedConfig);
+                
+                // Update UI with saved values
+                document.getElementById("newRateDate").value = NEW_RATE_CONFIG.date || "";
+                document.getElementById("newRateTime").value = NEW_RATE_CONFIG.time || "";
+                document.getElementById("newSessionCost").value = NEW_RATE_CONFIG.cost || "";
+                
+                // Update dropdown button text to show current configuration
+                updateConfigButtonText();
+                
+                showToast(`Valor configurado: R$ ${NEW_RATE_CONFIG.cost} a partir de ${formatDateForDisplay(NEW_RATE_CONFIG.date)} ${NEW_RATE_CONFIG.time}`, "info");
+            }
+        }
+        
+        // Update the configuration button text to show current settings
+        function updateConfigButtonText() {
+            if (NEW_RATE_CONFIG) {
+                const configBtn = document.querySelector(".config-dropdown-btn");
+                configBtn.innerHTML = `⚙️ Valor: R$ ${NEW_RATE_CONFIG.cost} (${formatDateForDisplay(NEW_RATE_CONFIG.date)}) <span class="dropdown-arrow">▼</span>`;
+            }
+        }
+        
+        // Format date for display (YYYY-MM-DD to DD-MM-YYYY)
+        function formatDateForDisplay(dateString) {
+            if (!dateString) return "";
+            
+            const parts = dateString.split('-');
+            if (parts.length !== 3) return dateString;
+            
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        
+        // Save new rate configuration
+        async function updateSessionCost() {
+            const date = document.getElementById("newRateDate").value;
+            const time = document.getElementById("newRateTime").value;
+            const cost = parseFloat(document.getElementById("newSessionCost").value);
+            
+            if (!date || !time) {
+                showToast("Por favor, insira uma data e hora válidas.", "error");
+                return;
+            }
+            
+            if (isNaN(cost) || cost <= 0) {
+                showToast("Por favor, insira um valor válido para a sessão.", "error");
+                return;
+            }
+            
+            // Create configuration object
+            const rateConfig = {
+                date: date,
+                time: time,
+                cost: cost,
+                timestamp: new Date(`${date}T${time}`).getTime()
+            };
+            
+            try {
+                // Save to Firestore
+                const rateConfigsCollection = window.firestore.collection(window.db, "rateConfigs");
+                
+                // Check if there's an existing document
+                const snapshot = await window.firestore.getDocs(rateConfigsCollection);
+                let docId = null;
+                
+                snapshot.forEach(doc => {
+                    docId = doc.id;
+                });
+                
+                if (docId) {
+                    // Update existing document
+                    await window.firestore.updateDoc(
+                        window.firestore.doc(window.db, "rateConfigs", docId),
+                        rateConfig
+                    );
+                } else {
+                    // Create new document
+                    await window.firestore.addDoc(rateConfigsCollection, rateConfig);
+                }
+                
+                // Save to localStorage
+                localStorage.setItem("rateConfig", JSON.stringify(rateConfig));
+                
+                // Update global variable
+                NEW_RATE_CONFIG = rateConfig;
+                
+                // Update dropdown button text
+                updateConfigButtonText();
+                
+                showToast("Configuração de valor salva com sucesso!", "success");
+                
+                // Reload data to update credit calculations
+                await loadData();
+            } catch (error) {
+                console.error("Error saving rate configuration: ", error);
+                showToast("Erro ao salvar configuração. Tente novamente.", "error");
+            }
+        }
+        
+        // Calculate credits based on payment amount and date
+        function calculateCredits(payment) {
+            const paymentAmount = payment.amount;
+            let sessionCost = DEFAULT_SESSION_COST;
+            
+            // Check if we should use the new rate
+            if (NEW_RATE_CONFIG && payment.rawDate) {
+                const paymentTime = payment.time || "00:00"; // Default to midnight if no time specified
+                const paymentTimestamp = new Date(`${payment.rawDate}T${paymentTime}`).getTime();
+                
+                if (paymentTimestamp >= NEW_RATE_CONFIG.timestamp) {
+                    sessionCost = NEW_RATE_CONFIG.cost;
+                }
+            }
+            
+            return Math.floor(paymentAmount / sessionCost);
+        }
         
         // Toast notification system
         function showToast(message, type = 'info', duration = 3000) {
@@ -479,6 +726,26 @@
         
         async function loadData() {
             try {
+                // Load rate configuration from Firestore
+                const rateConfigsSnapshot = await window.firestore.getDocs(
+                    window.firestore.collection(window.db, "rateConfigs")
+                );
+                
+                rateConfigsSnapshot.forEach(doc => {
+                    NEW_RATE_CONFIG = doc.data();
+                    localStorage.setItem("rateConfig", JSON.stringify(NEW_RATE_CONFIG));
+                    
+                    // Update UI with saved values
+                    document.getElementById("newRateDate").value = NEW_RATE_CONFIG.date || "";
+                    document.getElementById("newRateTime").value = NEW_RATE_CONFIG.time || "";
+                    document.getElementById("newSessionCost").value = NEW_RATE_CONFIG.cost || "";
+                });
+                
+                // If no rate config in Firestore, try loading from localStorage
+                if (!NEW_RATE_CONFIG) {
+                    loadRateConfig();
+                }
+                
                 // Get payments from Firestore
                 const paymentsSnapshot = await window.firestore.getDocs(
                     window.firestore.collection(window.db, "payments")
@@ -530,17 +797,35 @@
 
             // Format date for display
             const formattedDate = formatDate(date);
+            
+            // Get current time
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const currentTime = `${hours}:${minutes}`;
 
             try {
                 // Add to Firebase
                 await window.firestore.addDoc(
                     window.firestore.collection(window.db, "payments"), 
-                    { date: formattedDate, amount, rawDate: date }
+                    { 
+                        date: formattedDate, 
+                        amount, 
+                        rawDate: date,
+                        time: currentTime,
+                        timestamp: now.getTime()
+                    }
                 );
                 
                 // Update local storage
                 const payments = JSON.parse(localStorage.getItem("payments")) || [];
-                payments.push({ date: formattedDate, amount, rawDate: date });
+                payments.push({ 
+                    date: formattedDate, 
+                    amount, 
+                    rawDate: date,
+                    time: currentTime,
+                    timestamp: now.getTime()
+                });
                 localStorage.setItem("payments", JSON.stringify(payments));
                 
                 // Reload data to update UI
@@ -652,16 +937,28 @@
             });
 
             payments.forEach(payment => {
-                const credits = Math.floor(payment.amount / SESSION_COST);
+                const credits = calculateCredits(payment);
                 totalCredits += credits;
                 
                 // Ensure date is in DD-MM-YYYY format
                 const displayDate = payment.date ? payment.date : formatDate(payment.rawDate);
                 
+                // Calculate which session cost was used
+                let sessionCost = DEFAULT_SESSION_COST;
+                if (NEW_RATE_CONFIG && payment.rawDate) {
+                    const paymentTime = payment.time || "00:00";
+                    const paymentTimestamp = new Date(`${payment.rawDate}T${paymentTime}`).getTime();
+                    
+                    if (paymentTimestamp >= NEW_RATE_CONFIG.timestamp) {
+                        sessionCost = NEW_RATE_CONFIG.cost;
+                    }
+                }
+                
                 const row = `<tr>
                     <td>${displayDate}</td>
                     <td>R$ ${payment.amount.toFixed(2)}</td>
                     <td>${credits}</td>
+                    <td><small>R$ ${sessionCost}</small></td>
                     <td>
                         <button class="delete-btn" onclick="deletePayment('${payment.id}')">
                             <span class="delete-icon">🗑️</span>
@@ -816,11 +1113,23 @@
             }
             
             // Create CSV content
-            let csvContent = "Data,Valor,Créditos\n";
+            let csvContent = "Data,Valor,Créditos,Valor Sessão\n";
             
             payments.forEach(payment => {
-                const credits = Math.floor(payment.amount / SESSION_COST);
-                csvContent += `${payment.date},${payment.amount.toFixed(2)},${credits}\n`;
+                const credits = calculateCredits(payment);
+                
+                // Calculate which session cost was used
+                let sessionCost = DEFAULT_SESSION_COST;
+                if (NEW_RATE_CONFIG && payment.rawDate) {
+                    const paymentTime = payment.time || "00:00";
+                    const paymentTimestamp = new Date(`${payment.rawDate}T${paymentTime}`).getTime();
+                    
+                    if (paymentTimestamp >= NEW_RATE_CONFIG.timestamp) {
+                        sessionCost = NEW_RATE_CONFIG.cost;
+                    }
+                }
+                
+                csvContent += `${payment.date},${payment.amount.toFixed(2)},${credits},${sessionCost}\n`;
             });
             
             // Create download link
@@ -865,7 +1174,29 @@
         }
         
         // Load data when page loads
-        window.onload = loadData;
+        window.onload = function() {
+            loadData();
+            
+            // Check if config section should be open based on localStorage
+            const configSectionOpen = localStorage.getItem("configSectionOpen") === "true";
+            if (configSectionOpen) {
+                toggleConfigSection();
+            }
+        };
+        
+        // Toggle configuration section
+        function toggleConfigSection() {
+            const configSection = document.getElementById("configSection");
+            const dropdownBtn = document.querySelector(".config-dropdown-btn");
+            const dropdownArrow = document.querySelector(".dropdown-arrow");
+            
+            configSection.classList.toggle("show");
+            dropdownBtn.classList.toggle("active");
+            dropdownArrow.classList.toggle("up");
+            
+            // Save state to localStorage
+            localStorage.setItem("configSectionOpen", configSection.classList.contains("show"));
+        }
     </script>
 
 </body>
